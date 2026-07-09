@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Image → Dot Text (Braille Art)</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --panel: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --accent: #58a6ff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 24px;
+  }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .sub { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
+  .layout { display: flex; gap: 20px; flex-wrap: wrap; }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+  }
+  .controls { width: 280px; flex-shrink: 0; }
+  .output-wrap { flex: 1; min-width: 320px; }
+  #drop {
+    border: 2px dashed var(--border);
+    border-radius: 8px;
+    padding: 28px 12px;
+    text-align: center;
+    color: var(--muted);
+    cursor: pointer;
+    transition: border-color .15s, color .15s;
+    margin-bottom: 16px;
+    font-size: 13px;
+  }
+  #drop.hover, #drop:hover { border-color: var(--accent); color: var(--accent); }
+  #drop img { max-width: 100%; max-height: 160px; display: block; margin: 0 auto 8px; border-radius: 4px; }
+  label { display: block; font-size: 12px; color: var(--muted); margin: 14px 0 4px; }
+  label span { color: var(--text); float: right; font-variant-numeric: tabular-nums; }
+  input[type="range"] { width: 100%; accent-color: var(--accent); }
+  .check { display: flex; align-items: center; gap: 8px; margin-top: 14px; font-size: 13px; color: var(--text); }
+  .check label { margin: 0; color: var(--text); }
+  .btns { display: flex; gap: 8px; margin-top: 18px; }
+  button {
+    flex: 1;
+    background: #21262d;
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  button:hover { border-color: var(--accent); }
+  button:disabled { opacity: .4; cursor: default; }
+  pre {
+    margin: 0;
+    overflow: auto;
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 10px;
+    line-height: 1.15;
+    letter-spacing: 0;
+    white-space: pre;
+    color: var(--text);
+    min-height: 300px;
+  }
+  .stats { color: var(--muted); font-size: 12px; margin-top: 10px; }
+</style>
+</head>
+<body>
+
+<h1>Image → Dot Text</h1>
+<div class="sub">Braille dot art — grayscale → autocontrast → gamma + floor → Floyd–Steinberg dither → 2×4 braille cells</div>
+
+<div class="layout">
+  <div class="panel controls">
+    <div id="drop">Drop an image here<br>or click to choose</div>
+    <input type="file" id="file" accept="image/*" hidden>
+
+    <label>Width (characters) <span id="widthVal">82</span></label>
+    <input type="range" id="width" min="20" max="200" step="2" value="82">
+
+    <label>Gamma (lower = brighter shadows) <span id="gammaVal">0.50</span></label>
+    <input type="range" id="gamma" min="0.2" max="2.0" step="0.05" value="0.5">
+
+    <label>Background floor (0–255) <span id="floorVal">38</span></label>
+    <input type="range" id="floor" min="0" max="128" step="1" value="38">
+
+    <div class="check">
+      <input type="checkbox" id="invert">
+      <label for="invert">Invert (for light backgrounds)</label>
+    </div>
+    <div class="check">
+      <input type="checkbox" id="trim" checked>
+      <label for="trim">Trim empty margins</label>
+    </div>
+
+    <div class="btns">
+      <button id="copy" disabled>Copy</button>
+      <button id="download" disabled>Download .txt</button>
+    </div>
+    <div class="stats" id="stats"></div>
+  </div>
+
+  <div class="panel output-wrap">
+    <pre id="out">⠀ drop an image to begin</pre>
+  </div>
+</div>
+
+<script>
+const BLANK = "⠀";
+// dot bit positions within a 2x4 braille cell: (dx,dy) -> bit
+const BITS = {
+  "0,0": 0x01, "0,1": 0x02, "0,2": 0x04, "0,3": 0x40,
+  "1,0": 0x08, "1,1": 0x10, "1,2": 0x20, "1,3": 0x80,
+};
+
+let img = null;
+
+const $ = id => document.getElementById(id);
+const drop = $("drop"), fileInput = $("file"), out = $("out");
+
+drop.addEventListener("click", () => fileInput.click());
+drop.addEventListener("dragover", e => { e.preventDefault(); drop.classList.add("hover"); });
+drop.addEventListener("dragleave", () => drop.classList.remove("hover"));
+drop.addEventListener("drop", e => {
+  e.preventDefault();
+  drop.classList.remove("hover");
+  if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener("change", () => {
+  if (fileInput.files[0]) loadFile(fileInput.files[0]);
+});
+
+function loadFile(file) {
+  const url = URL.createObjectURL(file);
+  const im = new Image();
+  im.onload = () => {
+    img = im;
+    drop.innerHTML = "";
+    const thumb = document.createElement("img");
+    thumb.src = url;
+    drop.appendChild(thumb);
+    drop.appendChild(document.createTextNode("click to change"));
+    render();
+  };
+  im.src = url;
+}
+
+// live controls
+for (const [id, valId, fmt] of [
+  ["width", "widthVal", v => v],
+  ["gamma", "gammaVal", v => Number(v).toFixed(2)],
+  ["floor", "floorVal", v => v],
+]) {
+  $(id).addEventListener("input", () => {
+    $(valId).textContent = fmt($(id).value);
+    render();
+  });
+}
+$("invert").addEventListener("change", render);
+$("trim").addEventListener("change", render);
+
+function render() {
+  if (!img) return;
+
+  const wChars = parseInt($("width").value);
+  const gamma = parseFloat($("gamma").value);
+  const floor = parseInt($("floor").value);
+  const invert = $("invert").checked;
+  const trim = $("trim").checked;
+
+  // resize: 2 px per char horizontally, 4 px per char vertically;
+  // halve height ratio because a monospace char is ~twice as tall as wide
+  const wPx = wChars * 2;
+  let hPx = Math.round(wPx * (img.height / img.width) / 2) * 2;
+  hPx -= hPx % 4;
+  if (hPx < 4) hPx = 4;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = wPx;
+  canvas.height = hPx;
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(img, 0, 0, wPx, hPx);
+  const data = ctx.getImageData(0, 0, wPx, hPx).data;
+
+  // grayscale (luminosity)
+  const gray = new Float32Array(wPx * hPx);
+  for (let i = 0; i < wPx * hPx; i++) {
+    let v = 0.299 * data[i * 4] + 0.587 * data[i * 4 + 1] + 0.114 * data[i * 4 + 2];
+    if (invert) v = 255 - v;
+    gray[i] = v;
+  }
+
+  // autocontrast, 0.5% cutoff each end (same as PIL autocontrast(cutoff=0.5))
+  const hist = new Array(256).fill(0);
+  for (let i = 0; i < gray.length; i++) hist[Math.round(gray[i])]++;
+  const cut = gray.length * 0.005;
+  let lo = 0, hi = 255, acc = 0;
+  for (let i = 0; i < 256; i++) { acc += hist[i]; if (acc > cut) { lo = i; break; } }
+  acc = 0;
+  for (let i = 255; i >= 0; i--) { acc += hist[i]; if (acc > cut) { hi = i; break; } }
+  const scale = hi > lo ? 255 / (hi - lo) : 1;
+
+  // stretch, then floor + gamma
+  for (let i = 0; i < gray.length; i++) {
+    let v = Math.min(255, Math.max(0, (gray[i] - lo) * scale));
+    gray[i] = v < floor ? 0 : Math.pow(v / 255, gamma) * 255;
+  }
+
+  // Floyd–Steinberg dithering to 1-bit
+  const bit = new Uint8Array(wPx * hPx);
+  for (let y = 0; y < hPx; y++) {
+    for (let x = 0; x < wPx; x++) {
+      const i = y * wPx + x;
+      const old = gray[i];
+      const nw = old < 128 ? 0 : 255;
+      bit[i] = nw ? 1 : 0;
+      const err = old - nw;
+      if (x + 1 < wPx) gray[i + 1] += err * 7 / 16;
+      if (y + 1 < hPx) {
+        if (x > 0) gray[i + wPx - 1] += err * 3 / 16;
+        gray[i + wPx] += err * 5 / 16;
+        if (x + 1 < wPx) gray[i + wPx + 1] += err * 1 / 16;
+      }
+    }
+  }
+
+  // map 2x4 cells to braille chars
+  let lines = [];
+  for (let cy = 0; cy < hPx; cy += 4) {
+    let row = "";
+    for (let cx = 0; cx < wPx; cx += 2) {
+      let code = 0x2800;
+      for (let dx = 0; dx < 2; dx++)
+        for (let dy = 0; dy < 4; dy++)
+          if (bit[(cy + dy) * wPx + (cx + dx)]) code |= BITS[dx + "," + dy];
+      row += String.fromCharCode(code);
+    }
+    lines.push(row.replace(new RegExp(BLANK + "+$"), ""));
+  }
+
+  if (trim) {
+    while (lines.length && !lines[0]) lines.shift();
+    while (lines.length && !lines[lines.length - 1]) lines.pop();
+    const indents = lines
+      .filter(l => l)
+      .map(l => l.length - l.replace(new RegExp("^" + BLANK + "+"), "").length);
+    const dedent = Math.max(Math.min(...indents) - 1, 0);
+    lines = lines.map(l => l ? l.slice(dedent) : "");
+  }
+
+  const art = lines.join("\n");
+  out.textContent = art;
+  $("copy").disabled = $("download").disabled = false;
+  const maxW = Math.max(...lines.map(l => l.length), 0);
+  $("stats").textContent = `${maxW} × ${lines.length} chars · ${art.length} total`;
+}
+
+$("copy").addEventListener("click", async () => {
+  await navigator.clipboard.writeText(out.textContent);
+  $("copy").textContent = "Copied!";
+  setTimeout(() => $("copy").textContent = "Copy", 1200);
+});
+
+$("download").addEventListener("click", () => {
+  const blob = new Blob([out.textContent], { type: "text/plain;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "dot-art.txt";
+  a.click();
+});
+</script>
+</body>
+</html>
