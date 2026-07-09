@@ -95,6 +95,154 @@
   }
   .links a:hover { border-color: var(--accent); color: var(--accent); }
   .links svg { width: 15px; height: 15px; fill: currentColor; }
+
+  .stage-panel { margin-top: 16px; }
+  .stage-controls { display: flex; gap: 8px; margin-bottom: 12px; }
+  .stage-controls input {
+    flex: 1;
+    background: #0d1117;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 10px;
+    color: var(--text);
+    font-size: 13px;
+  }
+  .stage-controls button { flex-shrink: 0; width: auto; padding: 8px 14px; }
+  .stage {
+    position: relative;
+    height: 240px;
+    overflow: hidden;
+    border-radius: 6px;
+    background: #0d1117;
+    border: 1px solid var(--border);
+  }
+  .stage::after {
+    content: "";
+    position: absolute;
+    left: 0; right: 0; bottom: 8px;
+    height: 1px;
+    background: var(--border);
+  }
+  .walker {
+    position: absolute;
+    bottom: 10px;
+    left: 0;
+    margin: 0;
+    min-height: 0;
+    overflow: visible;
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 9px;
+    line-height: 1.15;
+    white-space: pre;
+    color: var(--text);
+    will-change: transform;
+  }
+  .bubble {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    translate: -50% 6px;
+    scale: 0.85;
+    opacity: 0;
+    margin-bottom: 10px;
+    background: var(--panel);
+    border: 1px solid var(--accent);
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 12px;
+    white-space: nowrap;
+    color: var(--text);
+    transition: translate .25s ease, scale .25s ease, opacity .25s ease;
+    pointer-events: none;
+  }
+  .bubble.show { opacity: 1; translate: -50% 0; scale: 1; }
+  .bubble::after {
+    content: "";
+    position: absolute;
+    bottom: -6px;
+    left: 20px;
+    border: 6px solid transparent;
+    border-top-color: var(--accent);
+  }
+
+  .scene-panel { margin-top: 16px; }
+  .scene-panel h2 { font-size: 15px; margin: 0 0 4px; }
+  .scene-panel .sub { margin-bottom: 14px; }
+  .actor-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+  .actor-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #0d1117;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 5px 6px 5px 10px;
+    font-size: 12px;
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+  }
+  .actor-chip button {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    line-height: 1;
+    border-radius: 4px;
+    font-size: 13px;
+  }
+  .actor-row > button { flex: none; width: auto; padding: 8px 12px; }
+  .actor-row input[type="text"] {
+    flex: 1;
+    min-width: 140px;
+    background: #0d1117;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 10px;
+    color: var(--text);
+    font-size: 13px;
+  }
+  .ai-help {
+    background: #0d1117;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 14px;
+    margin-bottom: 12px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .ai-help summary { cursor: pointer; color: var(--text); font-size: 13px; }
+  .ai-help ol { margin: 10px 0; padding-left: 20px; }
+  .ai-help li { margin-bottom: 4px; }
+  #aiPromptPreview {
+    width: 100%;
+    height: 90px;
+    resize: vertical;
+    background: #010409;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px;
+    color: var(--muted);
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 11px;
+    line-height: 1.4;
+  }
+  .scene-toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+  .scene-toolbar button { flex: none; width: auto; padding: 8px 14px; }
+  #sceneScript {
+    width: 100%;
+    height: 150px;
+    resize: vertical;
+    background: #0d1117;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px;
+    color: var(--text);
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 12px;
+    line-height: 1.4;
+    margin-bottom: 10px;
+  }
+  .scene-log { color: var(--muted); font-size: 12px; margin-bottom: 12px; min-height: 16px; white-space: pre-wrap; }
+  .scene-log.error { color: #f85149; }
 </style>
 </head>
 <body>
@@ -150,6 +298,42 @@
   <div class="panel output-wrap">
     <pre id="out">⠀ drop an image to begin</pre>
   </div>
+</div>
+
+<div class="panel scene-panel">
+  <h2>🎬 Scene Maker</h2>
+  <div class="sub">Multiple actors, custom-duration actions, max 5s per scene. Write the script by hand or generate it with an LLM.</div>
+
+  <div class="actor-row" id="actorRow">
+    <input type="text" id="actorName" placeholder="name (e.g. hero)" maxlength="24">
+    <button id="addActor" disabled>+ Add from current output</button>
+    <button id="addActorFiles">+ Upload character image(s)</button>
+    <input type="file" id="actorFiles" accept="image/*" multiple hidden>
+  </div>
+  <div class="scene-log" id="uploadLog"></div>
+
+  <details class="ai-help">
+    <summary>🤖 How to generate a scene with an LLM</summary>
+    <ol>
+      <li>Add your actors above — each chip's name is the id you'll refer to in the script.</li>
+      <li>Copy the prompt below (it already lists your current actor names).</li>
+      <li>Paste it into ChatGPT, Claude, or any LLM, and describe your scene in plain English at the end of it.</li>
+      <li>Paste the JSON it replies with into the script box below, then click "Run scene".</li>
+    </ol>
+    <textarea id="aiPromptPreview" readonly spellcheck="false"></textarea>
+  </details>
+
+  <textarea id="sceneScript" spellcheck="false" placeholder="Click &quot;Load example&quot; or write a scene JSON — see the AI prompt above for the schema."></textarea>
+
+  <div class="scene-toolbar">
+    <button id="loadExample">Load example</button>
+    <button id="copyPrompt">🤖 Copy AI prompt</button>
+    <button id="runScene">▶ Run scene</button>
+    <button id="recordScene">🎥 Download as video (.webm)</button>
+  </div>
+  <div class="scene-log" id="sceneLog"></div>
+
+  <div class="stage" id="stage"></div>
 </div>
 
 <script>
@@ -208,17 +392,26 @@ $("trim").addEventListener("change", render);
 
 function render() {
   if (!img) return;
+  const { art, lines } = imageToArt(img, {
+    wChars: parseInt($("width").value),
+    gamma: parseFloat($("gamma").value),
+    floor: parseInt($("floor").value),
+    invert: $("invert").checked,
+    trim: $("trim").checked,
+  });
+  out.textContent = art;
+  $("copy").disabled = $("download").disabled = $("addActor").disabled = false;
+  const maxW = Math.max(...lines.map(l => l.length), 0);
+  $("stats").textContent = `${maxW} × ${lines.length} chars · ${art.length} total`;
+}
 
-  const wChars = parseInt($("width").value);
-  const gamma = parseFloat($("gamma").value);
-  const floor = parseInt($("floor").value);
-  const invert = $("invert").checked;
-  const trim = $("trim").checked;
-
+// shared conversion pipeline — used by the main preview and by batch
+// character uploads in the Scene Maker
+function imageToArt(image, { wChars, gamma, floor, invert, trim }) {
   // resize: 2 px per char horizontally, 4 px per char vertically;
   // halve height ratio because a monospace char is ~twice as tall as wide
   const wPx = wChars * 2;
-  let hPx = Math.round(wPx * (img.height / img.width) / 2) * 2;
+  let hPx = Math.round(wPx * (image.height / image.width) / 2) * 2;
   hPx -= hPx % 4;
   if (hPx < 4) hPx = 4;
 
@@ -226,7 +419,7 @@ function render() {
   canvas.width = wPx;
   canvas.height = hPx;
   const ctx = canvas.getContext("2d");
-  ctx.drawImage(img, 0, 0, wPx, hPx);
+  ctx.drawImage(image, 0, 0, wPx, hPx);
   const data = ctx.getImageData(0, 0, wPx, hPx).data;
 
   // grayscale (luminosity)
@@ -296,11 +489,502 @@ function render() {
   }
 
   const art = lines.join("\n");
-  out.textContent = art;
-  $("copy").disabled = $("download").disabled = false;
-  const maxW = Math.max(...lines.map(l => l.length), 0);
-  $("stats").textContent = `${maxW} × ${lines.length} chars · ${art.length} total`;
+  return { art, lines };
 }
+
+// ---------------------------------------------------------------------
+// Scene Maker: multiple actors, each running a short timeline of basic
+// actions (left / right / jump / talk / wait), max 5s per scene.
+// ---------------------------------------------------------------------
+const MAX_SCENE_MS = 5000;
+const actors = []; // { id, art }
+let actorSeq = 0;
+
+// turn a user-typed or filename-derived label into a safe, unique JSON id
+function sanitizeName(raw, fallbackPrefix) {
+  let base = (raw || "").trim().toLowerCase().replace(/[^a-z0-9_]+/g, "_").replace(/^_+|_+$/g, "");
+  if (!base) { actorSeq += 1; base = `${fallbackPrefix}${actorSeq}`; }
+  let name = base, n = 2;
+  while (actors.some(a => a.id === name)) { name = `${base}_${n}`; n += 1; }
+  return name;
+}
+
+function renderActorRow() {
+  const row = $("actorRow");
+  row.querySelectorAll(".actor-chip").forEach(el => el.remove());
+  for (const a of actors) {
+    const chip = document.createElement("span");
+    chip.className = "actor-chip";
+    chip.innerHTML = `${a.id} <button title="remove">×</button>`;
+    chip.querySelector("button").addEventListener("click", () => {
+      const i = actors.indexOf(a);
+      if (i >= 0) actors.splice(i, 1);
+      renderActorRow();
+      updatePromptPreview();
+    });
+    row.insertBefore(chip, row.firstChild);
+  }
+  updatePromptPreview();
+}
+
+$("addActor").addEventListener("click", () => {
+  const text = out.textContent;
+  if (!text || !text.trim()) return;
+  const id = sanitizeName($("actorName").value, "actor");
+  actors.push({ id, art: text });
+  $("actorName").value = "";
+  renderActorRow();
+});
+
+// batch upload: convert each dropped/selected image with the current
+// slider settings and add it as an actor named after its filename
+$("addActorFiles").addEventListener("click", () => $("actorFiles").click());
+$("actorFiles").addEventListener("change", async () => {
+  const files = [...$("actorFiles").files];
+  $("actorFiles").value = "";
+  if (!files.length) return;
+
+  const opts = {
+    wChars: parseInt($("width").value),
+    gamma: parseFloat($("gamma").value),
+    floor: parseInt($("floor").value),
+    invert: $("invert").checked,
+    trim: $("trim").checked,
+  };
+  const log = $("uploadLog");
+  let done = 0;
+  log.textContent = `Converting 0/${files.length}…`;
+
+  for (const file of files) {
+    const image = await new Promise((resolve, reject) => {
+      const im = new Image();
+      im.onload = () => resolve(im);
+      im.onerror = reject;
+      im.src = URL.createObjectURL(file);
+    });
+    const { art } = imageToArt(image, opts);
+    const nameGuess = file.name.replace(/\.[^.]+$/, "");
+    const id = sanitizeName(nameGuess, "actor");
+    actors.push({ id, art });
+    done += 1;
+    log.textContent = `Converting ${done}/${files.length}…`;
+  }
+  log.textContent = `Added ${done} character${done === 1 ? "" : "s"}.`;
+  renderActorRow();
+});
+
+// falls back to the most recently added actor's art, or the current
+// output, so a scene script still runs even if actor ids don't match —
+// this is meant for indie use, not strict validation
+function getActorArt(id) {
+  const found = actors.find(a => a.id === id);
+  if (found) return found.art;
+  if (actors.length) return actors[actors.length - 1].art;
+  return out.textContent;
+}
+
+const EXAMPLE_SCENE = {
+  actors: [
+    { id: "actor1", xPct: 5 },
+    { id: "actor2", xPct: 75 },
+  ],
+  timeline: [
+    { actor: "actor1", action: "right", start: 0, duration: 1800, distancePct: 55 },
+    { actor: "actor2", action: "left", start: 200, duration: 1600, distancePct: 40 },
+    { actor: "actor1", action: "talk", start: 600, duration: 1000, text: "Hi! 👋" },
+    { actor: "actor2", action: "talk", start: 1800, duration: 900, text: "Oh, hey!" },
+    { actor: "actor1", action: "jump", start: 1900, duration: 700 },
+  ],
+};
+
+$("loadExample").addEventListener("click", () => {
+  $("sceneScript").value = JSON.stringify(EXAMPLE_SCENE, null, 2);
+});
+
+function buildPrompt() {
+  const ids = actors.length ? actors.map(a => a.id).join(", ") : "actor1, actor2 (add actors first, or use these ids)";
+  return `You write short scene scripts for a browser tool that animates ASCII/braille "dot art" characters. Output ONLY valid JSON, no prose, matching this schema:
+
+{
+  "actors": [ { "id": string, "xPct": number (0-100, starting horizontal position) } ],
+  "timeline": [
+    {
+      "actor": string,        // must match an actor id
+      "action": "left" | "right" | "jump" | "talk" | "wait",
+      "start": number,        // ms from scene start
+      "duration": number,     // ms
+      "distancePct": number,  // for "left"/"right" only: % of stage width to move
+      "text": string          // for "talk" only: speech bubble text, keep short
+    }
+  ]
+}
+
+Rules:
+- Total scene length (max over all start+duration) must be <= ${MAX_SCENE_MS}ms (5 seconds). This is a hard cap — anything longer gets auto-compressed.
+- "left"/"right" move an actor relative to their current position; "jump" is a quick hop in place; "talk" shows a speech bubble; "wait" is just a timing spacer.
+- An actor can only do one movement action (left/right/jump) at a time, but "talk" can overlap with movement.
+- Currently defined actor ids: ${ids}.
+
+Scene to write: <describe your scene here, e.g. "two friends meet, wave, one jumps for joy">`;
+}
+
+function updatePromptPreview() {
+  const el = $("aiPromptPreview");
+  if (el) el.value = buildPrompt();
+}
+updatePromptPreview();
+
+$("copyPrompt").addEventListener("click", async () => {
+  await navigator.clipboard.writeText(buildPrompt());
+  $("copyPrompt").textContent = "Copied!";
+  setTimeout(() => $("copyPrompt").textContent = "🤖 Copy AI prompt", 1400);
+});
+
+function fitToStage(walker, stage, bubbleHeadroom) {
+  const maxH = stage.clientHeight - 24 - bubbleHeadroom;
+  const maxW = stage.clientWidth - 24;
+  const fitScale = Math.min(1, maxH / walker.offsetHeight, maxW / walker.offsetWidth);
+  if (fitScale < 1) walker.style.fontSize = `${9 * fitScale}px`;
+  return fitScale;
+}
+
+function animateMove(walker, state, dxPx, duration) {
+  const fromX = state.x, toX = state.x + dxPx;
+  const fromY = state.y;
+  const anim = walker.animate([
+    { transform: `translate(${fromX}px, ${fromY}px)` },
+    { transform: `translate(${fromX + (toX - fromX) * 0.25}px, ${fromY - 3}px)` },
+    { transform: `translate(${fromX + (toX - fromX) * 0.5}px, ${fromY}px)` },
+    { transform: `translate(${fromX + (toX - fromX) * 0.75}px, ${fromY - 3}px)` },
+    { transform: `translate(${toX}px, ${fromY}px)` },
+  ], { duration: Math.max(duration, 50), easing: "linear", fill: "forwards" });
+  state.x = toX;
+  return anim.finished;
+}
+
+function animateJump(walker, state, duration) {
+  const x = state.x, y = state.y;
+  const anim = walker.animate([
+    { transform: `translate(${x}px, ${y}px) scale(1, 1)` },
+    { transform: `translate(${x}px, ${y + 3}px) scale(1.08, 0.85)`, offset: 0.18 },
+    { transform: `translate(${x}px, ${y - 48}px) scale(0.95, 1.12)`, offset: 0.55 },
+    { transform: `translate(${x}px, ${y + 3}px) scale(1.08, 0.85)`, offset: 0.82 },
+    { transform: `translate(${x}px, ${y}px) scale(1, 1)` },
+  ], { duration: Math.max(duration, 50), easing: "cubic-bezier(.34,1.56,.64,1)", fill: "forwards" });
+  return anim.finished;
+}
+
+// parse + validate the script box and clamp it to the 5s cap, returning a
+// timeline with already-scaled start/duration — shared by live playback
+// (WAAPI, on the DOM) and video export (manual time-sampled canvas)
+function parseSceneConfig() {
+  let config;
+  try {
+    config = JSON.parse($("sceneScript").value);
+  } catch (e) {
+    return { error: `Invalid JSON: ${e.message}` };
+  }
+  if (!config || !Array.isArray(config.timeline)) {
+    return { error: `Scene needs a "timeline" array.` };
+  }
+  const sceneActors = Array.isArray(config.actors) ? config.actors : [];
+  let total = 0;
+  for (const item of config.timeline) total = Math.max(total, (item.start || 0) + (item.duration || 0));
+  const scale = total > MAX_SCENE_MS ? MAX_SCENE_MS / total : 1;
+  const timeline = config.timeline.map(item => ({
+    actor: item.actor,
+    action: item.action,
+    start: (item.start || 0) * scale,
+    duration: (item.duration || (item.action === "jump" ? 700 : item.action === "talk" ? 1200 : 600)) * scale,
+    distancePct: item.distancePct,
+    text: item.text,
+  }));
+  return { sceneActors, timeline, total: total * scale, rawTotal: total, scale };
+}
+
+function sceneStatusText(sceneActors, timeline, total, scale) {
+  return `${sceneActors.length} actor${sceneActors.length === 1 ? "" : "s"} · ${timeline.length} action${timeline.length === 1 ? "" : "s"} · ` +
+    (scale < 1 ? `compressed ${(1 / scale).toFixed(2)}× to fit ${MAX_SCENE_MS}ms` : `${Math.round(total)}ms`);
+}
+
+async function runScene() {
+  const btn = $("runScene");
+  const log = $("sceneLog");
+  log.classList.remove("error");
+
+  const parsed = parseSceneConfig();
+  if (parsed.error) { log.classList.add("error"); log.textContent = parsed.error; return; }
+  const { sceneActors, timeline, total, scale } = parsed;
+
+  btn.disabled = true;
+  const stage = $("stage");
+  stage.innerHTML = "";
+
+  const state = {}; // id -> { el, bubble, x, y }
+  for (const a of sceneActors) {
+    const walker = document.createElement("pre");
+    walker.className = "walker";
+    walker.textContent = getActorArt(a.id);
+    walker.style.left = `${a.xPct ?? 0}%`;
+    stage.appendChild(walker);
+    fitToStage(walker, stage, 40);
+
+    const bubble = document.createElement("div");
+    bubble.className = "bubble";
+    walker.appendChild(bubble);
+
+    state[a.id] = { el: walker, bubble, x: 0, y: 0 };
+  }
+
+  const runners = timeline.map(item => new Promise(resolve => {
+    const st = state[item.actor];
+    if (!st) { resolve(); return; }
+    setTimeout(async () => {
+      if (item.action === "left") await animateMove(st.el, st, -(stage.clientWidth * (item.distancePct || 20) / 100), item.duration);
+      else if (item.action === "right") await animateMove(st.el, st, stage.clientWidth * (item.distancePct || 20) / 100, item.duration);
+      else if (item.action === "jump") await animateJump(st.el, st, item.duration);
+      else if (item.action === "talk") {
+        st.bubble.textContent = item.text || "…";
+        st.bubble.classList.add("show");
+        await new Promise(r => setTimeout(r, item.duration));
+        st.bubble.classList.remove("show");
+      } else {
+        await new Promise(r => setTimeout(r, item.duration)); // "wait"
+      }
+      resolve();
+    }, item.start);
+  }));
+
+  await Promise.all(runners);
+  log.textContent = sceneStatusText(sceneActors, timeline, total, scale);
+  btn.disabled = false;
+}
+
+$("runScene").addEventListener("click", runScene);
+
+// ---------------------------------------------------------------------
+// Video export: a separate, purely time-sampled canvas renderer (not
+// driven by WAAPI) so a scene can be "played" frame-by-frame at any
+// instant and captured with MediaRecorder.
+// ---------------------------------------------------------------------
+function prepareMovements(timeline, actorId, stageWidthPx) {
+  const items = timeline
+    .filter(t => t.actor === actorId && (t.action === "left" || t.action === "right" || t.action === "jump"))
+    .sort((a, b) => a.start - b.start);
+  let x = 0;
+  for (const m of items) {
+    m._baseX = x;
+    m._dx = m.action === "left" ? -(stageWidthPx * (m.distancePct || 20) / 100)
+      : m.action === "right" ? stageWidthPx * (m.distancePct || 20) / 100
+      : 0; // jump doesn't change committed position
+    x = m._baseX + m._dx;
+    m._afterX = x;
+  }
+  return items;
+}
+
+function moveBobY(frac) {
+  // mirrors the 4-segment walk keyframes: 0 → -3 → 0 → -3 → 0
+  const seg = Math.min(frac, 1) * 4;
+  const i = Math.min(Math.floor(seg), 3), f = seg - i;
+  const ys = [0, -3, 0, -3, 0];
+  return ys[i] + (ys[i + 1] - ys[i]) * f;
+}
+
+function jumpCurve(frac) {
+  // approximates the squash/stretch jump keyframes
+  const stops = [
+    { t: 0, y: 0, sx: 1, sy: 1 },
+    { t: 0.18, y: 3, sx: 1.08, sy: 0.85 },
+    { t: 0.55, y: -48, sx: 0.95, sy: 1.12 },
+    { t: 0.82, y: 3, sx: 1.08, sy: 0.85 },
+    { t: 1, y: 0, sx: 1, sy: 1 },
+  ];
+  for (let i = 0; i < stops.length - 1; i++) {
+    const a = stops[i], b = stops[i + 1];
+    if (frac >= a.t && frac <= b.t) {
+      const f = (frac - a.t) / (b.t - a.t || 1);
+      return { y: a.y + (b.y - a.y) * f, sx: a.sx + (b.sx - a.sx) * f, sy: a.sy + (b.sy - a.sy) * f };
+    }
+  }
+  return stops[stops.length - 1];
+}
+
+function sampleActor(movements, t) {
+  let x = 0, y = 0, sx = 1, sy = 1;
+  for (const m of movements) {
+    if (t < m.start) break; // sorted by start — nothing later has started either
+    const end = m.start + m.duration;
+    if (t >= end) { x = m._afterX; continue; }
+    const frac = m.duration > 0 ? (t - m.start) / m.duration : 1;
+    if (m.action === "jump") {
+      const j = jumpCurve(frac);
+      x = m._baseX; y = j.y; sx = j.sx; sy = j.sy;
+    } else {
+      x = m._baseX + m._dx * frac;
+      y = moveBobY(frac);
+    }
+    break;
+  }
+  return { x, y, sx, sy };
+}
+
+function sampleBubble(talks, t) {
+  for (const tk of talks) {
+    if (t >= tk.start && t <= tk.start + tk.duration) return tk.text || "…";
+  }
+  return null;
+}
+
+function roundRectPath(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+async function recordScene() {
+  const log = $("sceneLog");
+  log.classList.remove("error");
+
+  if (typeof MediaRecorder === "undefined") {
+    log.classList.add("error");
+    log.textContent = "Video export needs a browser with MediaRecorder support (Chrome, Firefox, Edge).";
+    return;
+  }
+
+  const parsed = parseSceneConfig();
+  if (parsed.error) { log.classList.add("error"); log.textContent = parsed.error; return; }
+  const { sceneActors, timeline, total, scale } = parsed;
+  if (!sceneActors.length || total <= 0) {
+    log.classList.add("error");
+    log.textContent = "Nothing to record — add actors and a timeline first.";
+    return;
+  }
+
+  const runBtn = $("runScene"), recBtn = $("recordScene");
+  runBtn.disabled = true;
+  recBtn.disabled = true;
+
+  const stageEl = $("stage");
+  const W = stageEl.clientWidth, H = stageEl.clientHeight;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = W;
+  canvas.height = H;
+  canvas.style.width = "100%";
+  canvas.style.height = "100%";
+  canvas.style.display = "block";
+  stageEl.innerHTML = "";
+  stageEl.appendChild(canvas);
+  const ctx = canvas.getContext("2d");
+
+  const rootStyle = getComputedStyle(document.documentElement);
+  const bg = rootStyle.getPropertyValue("--bg").trim() || "#0d1117";
+  const textColor = rootStyle.getPropertyValue("--text").trim() || "#e6edf3";
+  const accent = rootStyle.getPropertyValue("--accent").trim() || "#58a6ff";
+  const panelColor = rootStyle.getPropertyValue("--panel").trim() || "#161b22";
+  const FONT_STACK = `"SF Mono", Menlo, Consolas, monospace`;
+
+  const actorRender = sceneActors.map(a => {
+    const lines = getActorArt(a.id).split("\n");
+    let fontSize = 9;
+    ctx.font = `${fontSize}px ${FONT_STACK}`;
+    const measureW = () => Math.max(...lines.map(l => ctx.measureText(l).width), 1);
+    let w = measureW(), h = lines.length * fontSize * 1.15;
+    const maxW = W - 24, maxH = H - 24 - 40;
+    const fit = Math.min(1, maxW / w, maxH / h);
+    if (fit < 1) fontSize *= fit;
+    ctx.font = `${fontSize}px ${FONT_STACK}`;
+    w = measureW();
+    h = lines.length * fontSize * 1.15;
+    return {
+      id: a.id, lines, fontSize, w, h,
+      baseLeft: (a.xPct || 0) / 100 * W,
+      movements: prepareMovements(timeline, a.id, W),
+      talks: timeline.filter(t => t.actor === a.id && t.action === "talk").sort((x, y) => x.start - y.start),
+    };
+  });
+
+  function draw(t) {
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, W, H);
+    ctx.textBaseline = "top";
+    for (const ar of actorRender) {
+      const { x, y, sx, sy } = sampleActor(ar.movements, t);
+      const left = ar.baseLeft + x;
+      const bottom = H - 10;
+      const top = bottom - ar.h;
+      const lineH = ar.fontSize * 1.15;
+
+      ctx.save();
+      const cx = left + ar.w / 2, cy = bottom;
+      ctx.translate(cx, cy);
+      ctx.scale(sx, sy);
+      ctx.translate(-cx, -cy);
+      ctx.fillStyle = textColor;
+      ctx.font = `${ar.fontSize}px ${FONT_STACK}`;
+      ar.lines.forEach((line, i) => ctx.fillText(line, left, top + y + i * lineH));
+      ctx.restore();
+
+      const bubbleText = sampleBubble(ar.talks, t);
+      if (bubbleText) {
+        ctx.font = `12px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+        const padX = 10, padY = 6, tw = ctx.measureText(bubbleText).width;
+        const bw = tw + padX * 2, bh = 12 + padY * 2;
+        const bx = left + ar.w / 2 - bw / 2, by = top + y - bh - 10;
+        ctx.fillStyle = panelColor;
+        ctx.strokeStyle = accent;
+        roundRectPath(ctx, bx, by, bw, bh, 8);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = textColor;
+        ctx.textBaseline = "middle";
+        ctx.fillText(bubbleText, bx + padX, by + bh / 2);
+        ctx.textBaseline = "top";
+      }
+    }
+  }
+
+  const mimeType = ["video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"]
+    .find(m => MediaRecorder.isTypeSupported(m)) || "";
+  const stream = canvas.captureStream(30);
+  const chunks = [];
+  const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+  recorder.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
+  const stopped = new Promise(resolve => { recorder.onstop = resolve; });
+
+  draw(0);
+  recorder.start();
+  const startTime = performance.now();
+  await new Promise(resolve => {
+    function frame(now) {
+      const t = Math.min(now - startTime, total);
+      draw(t);
+      log.textContent = `Recording… ${Math.round((t / total) * 100)}%`;
+      if (t < total) requestAnimationFrame(frame);
+      else resolve();
+    }
+    requestAnimationFrame(frame);
+  });
+  recorder.stop();
+  await stopped;
+
+  const blob = new Blob(chunks, { type: mimeType || "video/webm" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "scene.webm";
+  a.click();
+
+  log.textContent = `Saved scene.webm (${(blob.size / 1024).toFixed(0)} KB) · ${sceneStatusText(sceneActors, timeline, total, scale)}`;
+  runBtn.disabled = false;
+  recBtn.disabled = false;
+}
+
+$("recordScene").addEventListener("click", recordScene);
 
 $("copy").addEventListener("click", async () => {
   await navigator.clipboard.writeText(out.textContent);
