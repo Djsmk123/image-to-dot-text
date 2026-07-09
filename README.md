@@ -2,6 +2,8 @@
 
 Convert any image into braille dot-text art — the kind you can paste into a GitHub README, a terminal, or anywhere monospace text renders.
 
+**Try it live: [image-to-dot-text.vercel.app](https://image-to-dot-text.vercel.app)**
+
 ```text
 ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⢄⢄⢔⢄⢄⢄⢀
 ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⡀⡦⡳⠹⠑⠁⠁⠃⠈⠐⠕⠕⠠⡀
